@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vigil Report — {{.Result.Hostname}}</title>
+<style>{{.CSS}}</style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1><span class="logo">▶</span> Vigil</h1>
+  <div class="meta">
+    <span>{{.Result.Hostname}}</span>
+    <span>{{.Result.OS}}</span>
+    <span>Scanned {{.GeneratedAt}}</span>
+    <span>{{printf "%.0f" .Result.Duration.Seconds}}s scan</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Health Score Hero -->
+  <div class="hero">
+    <div class="score-ring">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <circle class="score-track" cx="60" cy="60" r="48" fill="none" stroke="#1e2235" stroke-width="10"/>
+        <circle class="score-fill"  cx="60" cy="60" r="48" fill="none" stroke="#22c55e" stroke-width="10"
+                stroke-linecap="round"/>
+      </svg>
+      <div class="score-num">
+        {{.Result.HealthScore}}<div class="score-label">Health</div>
+      </div>
+    </div>
+
+    <div>
+      <div style="margin-bottom:8px;font-size:13px;color:var(--text-dim)">Click a card to filter findings:</div>
+      <div class="severity-cards">
+        <div class="sev-card sev-critical" data-filter="4">
+          <div><div class="num">{{.Result.Counts.Critical}}</div><div class="lbl">Act Now</div></div>
+        </div>
+        <div class="sev-card sev-warning" data-filter="3">
+          <div><div class="num">{{.Result.Counts.Warning}}</div><div class="lbl">Investigate</div></div>
+        </div>
+        <div class="sev-card sev-check" data-filter="2">
+          <div><div class="num">{{.Result.Counts.Check}}</div><div class="lbl">Worth Checking</div></div>
+        </div>
+        <div class="sev-card sev-headsup" data-filter="1">
+          <div><div class="num">{{.Result.Counts.HeadsUp}}</div><div class="lbl">Heads Up</div></div>
+        </div>
+        <div class="sev-card sev-clear" data-filter="0">
+          <div><div class="num">{{.Result.Counts.Clear}}</div><div class="lbl">All Clear</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Module tabs -->
+  <nav class="nav-tabs">
+    <div class="nav-tab" data-target="sec-processes">
+      Processes
+      {{with .Result.FindingsByModule "Processes"}}
+      <span class="tab-count">{{len .}}</span>
+      {{end}}
+    </div>
+    <div class="nav-tab" data-target="sec-network">
+      Network
+      {{with .Result.FindingsByModule "Network"}}
+      <span class="tab-count">{{len .}}</span>
+      {{end}}
+    </div>
+    <div class="nav-tab" data-target="sec-disk">
+      Disk
+      {{with .Result.FindingsByModule "Disk"}}
+      <span class="tab-count">{{len .}}</span>
+      {{end}}
+    </div>
+    <div class="nav-tab" data-target="sec-software">
+      Software
+      {{with .Result.FindingsByModule "Software"}}
+      <span class="tab-count">{{len .}}</span>
+      {{end}}
+    </div>
+    <div class="nav-tab" data-target="sec-tasks">
+      Scheduled Tasks
+      {{with .Result.FindingsByModule "Scheduled Tasks"}}
+      <span class="tab-count">{{len .}}</span>
+      {{end}}
+    </div>
+    <div class="nav-tab" data-target="sec-extensions">
+      Browser Extensions
+      {{with .Result.FindingsByModule "Browser Extensions"}}
+      <span class="tab-count">{{len .}}</span>
+      {{end}}
+    </div>
+  </nav>
+
+  <!-- ═══════════ PROCESSES ═══════════ -->
+  <section class="module-section" id="sec-processes">
+    <div class="section-header">
+      <h2>Running Processes</h2>
+    </div>
+
+    {{$findings := .Result.FindingsByModule "Processes"}}
+    {{if $findings}}
+    <div class="filter-bar">
+      <button class="filter-btn" data-sev="4">Act Now</button>
+      <button class="filter-btn" data-sev="3">Investigate</button>
+      <button class="filter-btn" data-sev="2">Worth Checking</button>
+      <button class="filter-btn" data-sev="1">Heads Up</button>
+      <input class="filter-input" type="text" placeholder="Search findings...">
+    </div>
+    {{range $findings}}
+    <div class="finding-card" data-sev="{{severityInt .Severity}}">
+      <div class="finding-header">
+        <div class="finding-sev sev-{{severityInt .Severity}}"></div>
+        <div class="finding-badge badge-{{severityInt .Severity}}">{{severityLabel .Severity}}</div>
+        <div class="finding-title">{{.Title}}</div>
+        <div class="finding-item">{{truncate .Item 40}}</div>
+        <div class="finding-chevron">›</div>
+      </div>
+      <div class="finding-body">
+        <div class="finding-detail">{{.Detail}}</div>
+        <div class="finding-explain">{{.Explain}}</div>
+        {{if .Metadata}}
+        <div class="finding-meta">
+          {{range $k,$v := .Metadata}}
+          <span class="finding-meta-tag">{{$k}}: {{$v}}</span>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+    {{else}}
+    <div class="empty-state">
+      <div class="icon">✓</div>
+      <h3>No process issues found</h3>
+      <p>Your running processes look normal.</p>
+    </div>
+    {{end}}
+
+    {{if .ProcessRaw}}
+    <div class="mt-16">
+      <h3 style="margin-bottom:12px;font-size:15px;">All Processes ({{len .ProcessRaw}})</h3>
+      <div class="data-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-sort="0">Name</th>
+              <th data-sort="1">PID</th>
+              <th data-sort="2" class="text-right">CPU%</th>
+              <th data-sort="3" class="text-right">RAM</th>
+              <th data-sort="4">User</th>
+              <th>Path</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .ProcessRaw}}
+            <tr>
+              <td class="bold">{{.Name}}</td>
+              <td class="mono text-dim">{{.PID}}</td>
+              <td class="text-right mono">{{percent .CPUPercent}}</td>
+              <td class="text-right mono">{{printf "%.0f MB" .MemMB}}</td>
+              <td class="text-dim">{{truncate .Username 20}}</td>
+              <td class="mono text-dim" style="font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{.Exe}}">{{truncate .Exe 60}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
+  </section>
+
+  <!-- ═══════════ NETWORK ═══════════ -->
+  <section class="module-section" id="sec-network">
+    <div class="section-header">
+      <h2>Network Connections</h2>
+    </div>
+
+    {{$findings := .Result.FindingsByModule "Network"}}
+    {{if $findings}}
+    <div class="filter-bar">
+      <button class="filter-btn" data-sev="4">Act Now</button>
+      <button class="filter-btn" data-sev="3">Investigate</button>
+      <button class="filter-btn" data-sev="2">Worth Checking</button>
+      <button class="filter-btn" data-sev="1">Heads Up</button>
+      <input class="filter-input" type="text" placeholder="Search findings...">
+    </div>
+    {{range $findings}}
+    <div class="finding-card" data-sev="{{severityInt .Severity}}">
+      <div class="finding-header">
+        <div class="finding-sev sev-{{severityInt .Severity}}"></div>
+        <div class="finding-badge badge-{{severityInt .Severity}}">{{severityLabel .Severity}}</div>
+        <div class="finding-title">{{.Title}}</div>
+        <div class="finding-item">{{truncate .Item 40}}</div>
+        <div class="finding-chevron">›</div>
+      </div>
+      <div class="finding-body">
+        <div class="finding-detail">{{.Detail}}</div>
+        <div class="finding-explain">{{.Explain}}</div>
+        {{if .Metadata}}
+        <div class="finding-meta">
+          {{range $k,$v := .Metadata}}
+          <span class="finding-meta-tag">{{$k}}: {{$v}}</span>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+    {{else}}
+    <div class="empty-state">
+      <div class="icon">✓</div>
+      <h3>No network issues found</h3>
+      <p>Active connections look normal.</p>
+    </div>
+    {{end}}
+
+    {{if .NetworkRaw}}
+    <div class="mt-16">
+      <h3 style="margin-bottom:12px;font-size:15px;">Active Connections ({{len .NetworkRaw}})</h3>
+      <div class="data-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Process</th>
+              <th>Remote Address</th>
+              <th>Port</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .NetworkRaw}}
+            {{if .RemoteAddr}}
+            <tr>
+              <td class="bold">{{.ProcessName}}</td>
+              <td class="mono">{{.RemoteAddr}}</td>
+              <td class="mono text-right">{{.RemotePort}}</td>
+              <td class="text-dim">{{.Status}}</td>
+            </tr>
+            {{end}}
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
+  </section>
+
+  <!-- ═══════════ DISK ═══════════ -->
+  <section class="module-section" id="sec-disk">
+    <div class="section-header">
+      <h2>Disk Usage</h2>
+    </div>
+
+    <!-- Drive summary cards -->
+    {{if .DiskRaw.Drives}}
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px;">
+      {{range .DiskRaw.Drives}}
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 20px;min-width:200px;">
+        <div style="font-weight:700;margin-bottom:4px;">{{.Path}}</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">{{.FSType}}</div>
+        <div style="background:var(--bg);border-radius:4px;height:6px;overflow:hidden;margin-bottom:8px;">
+          <div style="height:100%;border-radius:4px;width:{{percent .PercentUsed}};background:{{if ge .PercentUsed 90.0}}var(--red){{else if ge .PercentUsed 80.0}}var(--orange){{else}}var(--green){{end}};"></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-dim);">{{formatBytesU .Used}} used · {{formatBytesU .Free}} free · {{formatBytesU .Total}} total</div>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{$findings := .Result.FindingsByModule "Disk"}}
+    {{if $findings}}
+    {{range $findings}}
+    <div class="finding-card" data-sev="{{severityInt .Severity}}">
+      <div class="finding-header">
+        <div class="finding-sev sev-{{severityInt .Severity}}"></div>
+        <div class="finding-badge badge-{{severityInt .Severity}}">{{severityLabel .Severity}}</div>
+        <div class="finding-title">{{.Title}}</div>
+        <div class="finding-chevron">›</div>
+      </div>
+      <div class="finding-body">
+        <div class="finding-detail">{{.Detail}}</div>
+        <div class="finding-explain">{{.Explain}}</div>
+      </div>
+    </div>
+    {{end}}
+    {{end}}
+
+    {{if .DiskRaw.TopDirs}}
+    <div class="mt-16">
+      <h3 style="margin-bottom:12px;font-size:15px;">Largest Folders</h3>
+      <div class="data-table-wrap">
+        <table>
+          <thead><tr><th>Path</th><th class="text-right" data-sort="1">Size</th></tr></thead>
+          <tbody>
+            {{range .DiskRaw.TopDirs}}
+            <tr>
+              <td class="mono" style="font-size:12px;">{{.Path}}</td>
+              <td class="mono text-right bold">{{formatBytes .Bytes}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
+
+    {{if .DiskRaw.TopFiles}}
+    <div class="mt-16">
+      <h3 style="margin-bottom:12px;font-size:15px;">Largest Files</h3>
+      <div class="data-table-wrap">
+        <table>
+          <thead><tr><th>File</th><th class="text-right" data-sort="1">Size</th></tr></thead>
+          <tbody>
+            {{range .DiskRaw.TopFiles}}
+            <tr>
+              <td class="mono" style="font-size:12px;">{{.Path}}</td>
+              <td class="mono text-right bold">{{formatBytes .Bytes}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
+  </section>
+
+  <!-- ═══════════ SOFTWARE ═══════════ -->
+  <section class="module-section" id="sec-software">
+    <div class="section-header">
+      <h2>Recently Installed Software</h2>
+    </div>
+
+    {{$findings := .Result.FindingsByModule "Software"}}
+    {{if $findings}}
+    <div class="filter-bar">
+      <button class="filter-btn" data-sev="2">Worth Checking</button>
+      <button class="filter-btn" data-sev="1">Heads Up</button>
+      <input class="filter-input" type="text" placeholder="Search...">
+    </div>
+    {{range $findings}}
+    <div class="finding-card" data-sev="{{severityInt .Severity}}">
+      <div class="finding-header">
+        <div class="finding-sev sev-{{severityInt .Severity}}"></div>
+        <div class="finding-badge badge-{{severityInt .Severity}}">{{severityLabel .Severity}}</div>
+        <div class="finding-title">{{.Title}}</div>
+        <div class="finding-item">{{truncate .Item 40}}</div>
+        <div class="finding-chevron">›</div>
+      </div>
+      <div class="finding-body">
+        <div class="finding-detail">{{.Detail}}</div>
+        <div class="finding-explain">{{.Explain}}</div>
+        {{if .Metadata}}
+        <div class="finding-meta">
+          {{range $k,$v := .Metadata}}
+          <span class="finding-meta-tag">{{$k}}: {{$v}}</span>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+    {{end}}
+
+    {{if .SoftRaw}}
+    <div class="mt-16">
+      <h3 style="margin-bottom:12px;font-size:15px;">All Recent Software ({{len .SoftRaw}})</h3>
+      <div class="data-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-sort="0">Name</th>
+              <th data-sort="1">Publisher</th>
+              <th data-sort="2">Version</th>
+              <th data-sort="3">Installed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .SoftRaw}}
+            <tr>
+              <td class="bold">{{.Name}}</td>
+              <td class="text-dim">{{if .Publisher}}{{.Publisher}}{{else}}<span style="color:var(--orange)">Unknown</span>{{end}}</td>
+              <td class="mono text-dim">{{.Version}}</td>
+              <td class="text-dim">{{formatTime .InstallDate}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
+  </section>
+
+  <!-- ═══════════ TASKS ═══════════ -->
+  <section class="module-section" id="sec-tasks">
+    <div class="section-header">
+      <h2>Scheduled Tasks</h2>
+    </div>
+
+    {{$findings := .Result.FindingsByModule "Scheduled Tasks"}}
+    {{if $findings}}
+    <div class="filter-bar">
+      <button class="filter-btn" data-sev="3">Investigate</button>
+      <button class="filter-btn" data-sev="2">Worth Checking</button>
+      <button class="filter-btn" data-sev="1">Heads Up</button>
+      <input class="filter-input" type="text" placeholder="Search tasks...">
+    </div>
+    {{range $findings}}
+    <div class="finding-card" data-sev="{{severityInt .Severity}}">
+      <div class="finding-header">
+        <div class="finding-sev sev-{{severityInt .Severity}}"></div>
+        <div class="finding-badge badge-{{severityInt .Severity}}">{{severityLabel .Severity}}</div>
+        <div class="finding-title">{{.Title}}</div>
+        <div class="finding-item">{{truncate .Item 40}}</div>
+        <div class="finding-chevron">›</div>
+      </div>
+      <div class="finding-body">
+        <div class="finding-detail">{{.Detail}}</div>
+        <div class="finding-explain">{{.Explain}}</div>
+        {{if .Metadata}}
+        <div class="finding-meta">
+          {{range $k,$v := .Metadata}}
+          <span class="finding-meta-tag">{{$k}}: {{$v}}</span>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+    {{else}}
+    <div class="empty-state">
+      <div class="icon">✓</div>
+      <h3>No suspicious tasks found</h3>
+      <p>Scheduled tasks look normal.</p>
+    </div>
+    {{end}}
+
+    {{if .TasksRaw}}
+    <div class="mt-16">
+      <h3 style="margin-bottom:12px;font-size:15px;">All Tasks ({{len .TasksRaw}})</h3>
+      <div class="data-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-sort="0">Task Name</th>
+              <th>Action</th>
+              <th>Trigger</th>
+              <th>Run As</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .TasksRaw}}
+            <tr>
+              <td class="bold">{{.Name}}</td>
+              <td class="mono text-dim" style="font-size:11px;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{.Action}}">{{truncate .Action 50}}</td>
+              <td class="text-dim">{{truncate .Trigger 30}}</td>
+              <td class="text-dim">{{.RunAs}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
+  </section>
+
+  <!-- ═══════════ EXTENSIONS ═══════════ -->
+  <section class="module-section" id="sec-extensions">
+    <div class="section-header">
+      <h2>Browser Extensions</h2>
+    </div>
+
+    {{$findings := .Result.FindingsByModule "Browser Extensions"}}
+    {{if $findings}}
+    <div class="filter-bar">
+      <button class="filter-btn" data-sev="3">Investigate</button>
+      <button class="filter-btn" data-sev="2">Worth Checking</button>
+      <button class="filter-btn" data-sev="1">Heads Up</button>
+      <input class="filter-input" type="text" placeholder="Search extensions...">
+    </div>
+    {{range $findings}}
+    <div class="finding-card" data-sev="{{severityInt .Severity}}">
+      <div class="finding-header">
+        <div class="finding-sev sev-{{severityInt .Severity}}"></div>
+        <div class="finding-badge badge-{{severityInt .Severity}}">{{severityLabel .Severity}}</div>
+        <div class="finding-title">{{.Title}}</div>
+        <div class="finding-item">{{truncate .Item 40}}</div>
+        <div class="finding-chevron">›</div>
+      </div>
+      <div class="finding-body">
+        <div class="finding-detail">{{.Detail}}</div>
+        <div class="finding-explain">{{.Explain}}</div>
+        {{if .Metadata}}
+        <div class="finding-meta">
+          {{range $k,$v := .Metadata}}
+          <span class="finding-meta-tag">{{$k}}: {{$v}}</span>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+    {{else if not .ExtRaw}}
+    <div class="empty-state">
+      <div class="icon">🌐</div>
+      <h3>No browsers found</h3>
+      <p>Chrome, Firefox, Edge, and Brave were not detected on this system.</p>
+    </div>
+    {{else}}
+    <div class="empty-state">
+      <div class="icon">✓</div>
+      <h3>No extension issues found</h3>
+      <p>Installed extensions look normal.</p>
+    </div>
+    {{end}}
+
+    {{if .ExtRaw}}
+    <div class="mt-16">
+      <h3 style="margin-bottom:12px;font-size:15px;">All Extensions ({{len .ExtRaw}})</h3>
+      <div class="data-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-sort="0">Name</th>
+              <th>Browser</th>
+              <th>Source</th>
+              <th>Last Updated</th>
+              <th>Version</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .ExtRaw}}
+            <tr>
+              <td class="bold">{{.Name}}</td>
+              <td class="text-dim">{{.Browser}}</td>
+              <td class="{{if contains .Source "Sideload"}}text-orange{{else}}text-dim{{end}}">{{.Source}}</td>
+              <td class="text-dim">{{formatTime .UpdatedAt}}</td>
+              <td class="mono text-dim">{{.Version}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
+  </section>
+
+</div><!-- /container -->
+
+<footer>
+  Generated by <strong>Vigil</strong> · Everything ran locally on your machine · No data was sent anywhere
+  · <a href="https://github.com/adamtayara/vigil">Open Source</a>
+</footer>
+
+<script>{{.JS}}</script>
+</body>
+</html>
