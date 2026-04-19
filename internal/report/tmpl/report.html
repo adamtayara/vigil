@@ -104,6 +104,7 @@
     {{$findings := .Result.FindingsByModule "Processes"}}
     {{if $findings}}
     <div class="filter-bar">
+      <button class="filter-btn active" data-sev="all">All</button>
       <button class="filter-btn" data-sev="4">Act Now</button>
       <button class="filter-btn" data-sev="3">Investigate</button>
       <button class="filter-btn" data-sev="2">Worth Checking</button>
@@ -140,9 +141,19 @@
     </div>
     {{end}}
 
-    {{if .ProcessRaw}}
-    <div class="mt-16">
-      <h3 style="margin-bottom:12px;font-size:15px;">All Processes ({{len .ProcessRaw}})</h3>
+    {{if .ProcessTop}}
+    <div class="mt-16" id="process-table-wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
+        <h3 style="font-size:15px;margin:0;">
+          Top Processes by Memory
+          <span style="color:var(--text-dim);font-weight:400;font-size:13px;margin-left:8px;">
+            showing <span id="process-shown">{{len .ProcessTop}}</span> of {{.ProcessTotal}}
+          </span>
+        </h3>
+        {{if .ProcessHidden}}
+        <button id="toggle-all-processes" class="filter-btn" type="button">Show all {{.ProcessTotal}}</button>
+        {{end}}
+      </div>
       <div class="data-table-wrap">
         <table>
           <thead>
@@ -151,19 +162,26 @@
               <th data-sort="1">PID</th>
               <th data-sort="2" class="text-right">CPU%</th>
               <th data-sort="3" class="text-right">RAM</th>
-              <th data-sort="4">User</th>
               <th>Path</th>
             </tr>
           </thead>
           <tbody>
-            {{range .ProcessRaw}}
+            {{range .ProcessTop}}
             <tr>
               <td class="bold">{{.Name}}</td>
               <td class="mono text-dim">{{.PID}}</td>
               <td class="text-right mono">{{percent .CPUPercent}}</td>
               <td class="text-right mono">{{printf "%.0f MB" .MemMB}}</td>
-              <td class="text-dim">{{truncate .Username 20}}</td>
-              <td class="mono text-dim" style="font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{.Exe}}">{{truncate .Exe 60}}</td>
+              <td class="mono text-dim" style="font-size:11px;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{.Exe}}">{{truncate .Exe 60}}</td>
+            </tr>
+            {{end}}
+            {{range .ProcessHidden}}
+            <tr class="process-extra" style="display:none;">
+              <td class="bold">{{.Name}}</td>
+              <td class="mono text-dim">{{.PID}}</td>
+              <td class="text-right mono">{{percent .CPUPercent}}</td>
+              <td class="text-right mono">{{printf "%.0f MB" .MemMB}}</td>
+              <td class="mono text-dim" style="font-size:11px;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{.Exe}}">{{truncate .Exe 60}}</td>
             </tr>
             {{end}}
           </tbody>
@@ -182,6 +200,7 @@
     {{$findings := .Result.FindingsByModule "Network"}}
     {{if $findings}}
     <div class="filter-bar">
+      <button class="filter-btn active" data-sev="all">All</button>
       <button class="filter-btn" data-sev="4">Act Now</button>
       <button class="filter-btn" data-sev="3">Investigate</button>
       <button class="filter-btn" data-sev="2">Worth Checking</button>

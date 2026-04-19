@@ -7,12 +7,38 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/adamtayara/vigil/internal/analysis"
 	"github.com/adamtayara/vigil/internal/scanner"
 )
+
+const processTopN = 25
+
+func cleanProcesses(procs []scanner.ProcessInfo) (top, rest []scanner.ProcessInfo) {
+	cleaned := make([]scanner.ProcessInfo, 0, len(procs))
+	for _, p := range procs {
+		if strings.TrimSpace(p.Name) == "" {
+			continue
+		}
+		if p.CPUPercent == 0 && p.MemMB == 0 && p.Exe == "" {
+			continue
+		}
+		cleaned = append(cleaned, p)
+	}
+	sort.Slice(cleaned, func(i, j int) bool {
+		if cleaned[i].MemMB == cleaned[j].MemMB {
+			return cleaned[i].CPUPercent > cleaned[j].CPUPercent
+		}
+		return cleaned[i].MemMB > cleaned[j].MemMB
+	})
+	if len(cleaned) <= processTopN {
+		return cleaned, nil
+	}
+	return cleaned[:processTopN], cleaned[processTopN:]
+}
 
 //go:embed tmpl/report.html
 var reportTmpl string
@@ -24,16 +50,18 @@ var reportCSS string
 var reportJS string
 
 type ReportData struct {
-	Result     *analysis.ScanResult
-	ProcessRaw []scanner.ProcessInfo
-	NetworkRaw []scanner.Connection
-	DiskRaw    scanner.DiskInfo
-	SoftRaw    []scanner.Software
-	TasksRaw   []scanner.Task
-	ExtRaw     []scanner.Extension
-	CSS        template.CSS
-	JS         template.JS
-	GeneratedAt string
+	Result         *analysis.ScanResult
+	ProcessTop     []scanner.ProcessInfo
+	ProcessHidden  []scanner.ProcessInfo
+	ProcessTotal   int
+	NetworkRaw     []scanner.Connection
+	DiskRaw        scanner.DiskInfo
+	SoftRaw        []scanner.Software
+	TasksRaw       []scanner.Task
+	ExtRaw         []scanner.Extension
+	CSS            template.CSS
+	JS             template.JS
+	GeneratedAt    string
 }
 
 func Generate(
@@ -47,17 +75,20 @@ func Generate(
 ) (string, error) {
 	result.Tally()
 
+	procTop, procHidden := cleanProcesses(procs)
 	data := ReportData{
-		Result:      result,
-		ProcessRaw:  procs,
-		NetworkRaw:  conns,
-		DiskRaw:     disk,
-		SoftRaw:     soft,
-		TasksRaw:    tasks,
-		ExtRaw:      exts,
-		CSS:         template.CSS(reportCSS),
-		JS:          template.JS(reportJS),
-		GeneratedAt: time.Now().Format("Jan 2, 2006 at 3:04 PM"),
+		Result:        result,
+		ProcessTop:    procTop,
+		ProcessHidden: procHidden,
+		ProcessTotal:  len(procTop) + len(procHidden),
+		NetworkRaw:    conns,
+		DiskRaw:       disk,
+		SoftRaw:       soft,
+		TasksRaw:      tasks,
+		ExtRaw:        exts,
+		CSS:           template.CSS(reportCSS),
+		JS:            template.JS(reportJS),
+		GeneratedAt:   time.Now().Format("Jan 2, 2006 at 3:04 PM"),
 	}
 
 	funcMap := template.FuncMap{

@@ -7,17 +7,27 @@ import (
 )
 
 func OpenInBrowser(path string) error {
-	var cmd *exec.Cmd
+	var attempts []*exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", "", path)
+		attempts = []*exec.Cmd{
+			exec.Command("rundll32", "url.dll,FileProtocolHandler", path),
+			exec.Command("cmd", "/c", "start", "", path),
+			exec.Command("explorer", path),
+		}
 	case "darwin":
-		cmd = exec.Command("open", path)
+		attempts = []*exec.Cmd{exec.Command("open", path)}
 	default:
-		cmd = exec.Command("xdg-open", path)
+		attempts = []*exec.Cmd{exec.Command("xdg-open", path)}
 	}
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("opening browser: %w", err)
+
+	var firstErr error
+	for _, c := range attempts {
+		if err := c.Start(); err == nil {
+			return nil
+		} else if firstErr == nil {
+			firstErr = err
+		}
 	}
-	return nil
+	return fmt.Errorf("opening browser: %w", firstErr)
 }

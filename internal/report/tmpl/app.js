@@ -28,10 +28,13 @@ document.querySelectorAll('.finding-header').forEach(header => {
   });
 });
 
-// Filter buttons within sections
+// Filter buttons within sections — single-select tabs, "All" is default
 document.querySelectorAll('.filter-btn[data-sev]').forEach(btn => {
   btn.addEventListener('click', () => {
-    btn.classList.toggle('active');
+    const bar = btn.closest('.filter-bar');
+    if (!bar) return;
+    bar.querySelectorAll('.filter-btn[data-sev]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
     filterSection(btn.closest('.module-section'));
   });
 });
@@ -45,18 +48,41 @@ document.querySelectorAll('.filter-input').forEach(input => {
 
 function filterSection(section) {
   if (!section) return;
-  const activeFilters = Array.from(section.querySelectorAll('.filter-btn.active[data-sev]'))
-                             .map(b => parseInt(b.dataset.sev));
+  const activeBtn = section.querySelector('.filter-btn.active[data-sev]');
+  const activeFilter = activeBtn ? activeBtn.dataset.sev : 'all';
   const searchText = (section.querySelector('.filter-input')?.value || '').toLowerCase();
 
   section.querySelectorAll('.finding-card').forEach(card => {
-    const sev = parseInt(card.dataset.sev);
+    const sev = card.dataset.sev;
     const text = card.textContent.toLowerCase();
-    const sevMatch = activeFilters.length === 0 || activeFilters.includes(sev);
+    const sevMatch = activeFilter === 'all' || sev === activeFilter;
     const textMatch = !searchText || text.includes(searchText);
     card.style.display = sevMatch && textMatch ? '' : 'none';
   });
 }
+
+// Process table — toggle hidden rows
+(function () {
+  const btn = document.getElementById('toggle-all-processes');
+  if (!btn) return;
+  const wrap = document.getElementById('process-table-wrap');
+  const counter = document.getElementById('process-shown');
+  let expanded = false;
+  btn.addEventListener('click', () => {
+    expanded = !expanded;
+    const extras = wrap.querySelectorAll('tr.process-extra');
+    extras.forEach(r => r.style.display = expanded ? '' : 'none');
+    btn.textContent = expanded
+      ? 'Show top ' + (counter ? counter.dataset.top || '25' : '25') + ' only'
+      : 'Show all ' + (extras.length + parseInt(counter?.textContent || '0'));
+    if (counter) {
+      if (!counter.dataset.top) counter.dataset.top = counter.textContent;
+      counter.textContent = expanded
+        ? (extras.length + parseInt(counter.dataset.top))
+        : counter.dataset.top;
+    }
+  });
+})();
 
 function applyFilters() {
   const activeFilters = Array.from(document.querySelectorAll('.sev-card.active[data-filter]'))
