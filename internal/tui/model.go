@@ -28,7 +28,8 @@ type ModuleDoneMsg struct {
 }
 
 type ScanDoneMsg struct {
-	Result *analysis.ScanResult
+	Result     *analysis.ScanResult
+	ReportPath string
 }
 
 type ErrorMsg struct {
@@ -42,9 +43,10 @@ type Model struct {
 	findings []analysis.Finding
 	done     bool
 	err      error
-	result   *analysis.ScanResult
-	width    int
-	startAt  time.Time
+	result     *analysis.ScanResult
+	reportPath string
+	width      int
+	startAt    time.Time
 }
 
 func NewModel(moduleNames []string) Model {
@@ -110,6 +112,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ScanDoneMsg:
 		m.done = true
 		m.result = msg.Result
+		m.reportPath = msg.ReportPath
 		return m, tea.Quit
 
 	case ErrorMsg:
@@ -170,13 +173,13 @@ func (m Model) View() string {
 
 	if m.done && m.result != nil {
 		b.WriteString("\n")
-		b.WriteString(renderSummary(m.result))
+		b.WriteString(renderSummary(m.result, m.reportPath))
 	}
 
 	return b.String()
 }
 
-func renderSummary(r *analysis.ScanResult) string {
+func renderSummary(r *analysis.ScanResult, reportPath string) string {
 	score := r.HealthScore()
 	scoreStyle := styleSuccess
 	if score < 80 {
@@ -200,8 +203,13 @@ func renderSummary(r *analysis.ScanResult) string {
 		strings.Join(counts, "  "),
 	)
 
-	return styleSummaryBox.Render(content) + "\n\n" +
-		styleSuccess.Render("  ✓ Report saved and opening in your browser...") + "\n\n"
+	footer := styleSuccess.Render("  Full interactive report opening in your browser.")
+	if reportPath != "" {
+		footer += "\n  " + styleDim.Render("Saved to: ") + reportPath
+	}
+	footer += "\n  " + styleDim.Render("If it didn't open, copy the path above into your browser.")
+
+	return styleSummaryBox.Render(content) + "\n\n" + footer + "\n\n"
 }
 
 func formatElapsed(d time.Duration) string {
